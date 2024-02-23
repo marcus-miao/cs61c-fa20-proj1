@@ -25,13 +25,52 @@
 //Make sure that you close the file with fclose before returning.
 Image *readData(char *filename) 
 {
-	//YOUR CODE HERE
+    FILE *fp = fopen(filename, "r");
+    if (!fp) {
+        perror("file open failure\n");
+        return NULL;
+    }
+
+    char buf[60];
+    uint32_t cols, rows;
+    fscanf(fp, "%s", buf); // read file format. not used
+    fscanf(fp, "%d %d", cols, rows); // read col and row
+    fscanf(fp, "%s", buf); // read scale. not used.
+
+    if (!(cols && rows)) {
+        printf("col/row cannot be zero\n");
+        return NULL;
+    }
+
+    uint32_t numPixels = cols * rows;
+    if (numPixels / cols != rows) {
+        printf("uint32_t multiplication overflow\n");
+        return NULL;
+    }
+
+    Image *img = malloc(sizeof(Image) + sizeof(Color) * numPixels);
+    img->cols = cols;
+    img->rows = rows;
+
+    uint32_t idx = 0;
+    uint8_t r, g, b;
+    while (fscanf(fp, "%d %d %d", r, g, b)) {
+        Color *color = malloc(sizeof(Color));
+        color->R = r;
+        color->G = g;
+        color->B = b;
+        (img->image)[idx++] = color;
+    }
+
+    fclose(fp);
+
+    return img;
 }
 
 //Given an image, prints to stdout (e.g. with printf) a .ppm P3 file with the image's data.
 void writeData(Image *image)
 {
-	//YOUR CODE HERE
+
 }
 
 //Frees an image
