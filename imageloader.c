@@ -70,7 +70,24 @@ Image *readData(char *filename)
 //Given an image, prints to stdout (e.g. with printf) a .ppm P3 file with the image's data.
 void writeData(Image *image)
 {
+    printf("P3\n");
+    printf("%d %d\n", image->cols, image->rows);
+    printf("255\n");
 
+    uint32_t numPixels = image->cols * image->rows;
+    uint32_t idx = 0;
+    const uint8_t SEPARATOR = 3;
+    while (idx < numPixels) {
+        Color *color = image->image[idx];
+        printf("%*d %*d %*d", SEPARATOR, color->R, SEPARATOR, color->G, SEPARATOR, color->B);
+
+        if (idx % image->cols) {
+            printf("%*c", SEPARATOR, " ");
+        } else {
+            printf("\n");
+        }
+        idx++;
+    }
 }
 
 //Frees an image
