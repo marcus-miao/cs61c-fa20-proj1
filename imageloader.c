@@ -34,7 +34,7 @@ Image *readData(char *filename)
     char buf[60];
     uint32_t cols, rows;
     fscanf(fp, "%s", buf); // read file format. not used
-    fscanf(fp, "%d %d", cols, rows); // read col and row
+    fscanf(fp, "%" PRIu32 " %" PRIu32 "", &cols, &rows); // read col and row
     fscanf(fp, "%s", buf); // read scale. not used.
 
     if (!(cols && rows)) {
@@ -42,24 +42,26 @@ Image *readData(char *filename)
         return NULL;
     }
 
-    uint32_t numPixels = cols * rows;
+    uint64_t numPixels = cols * rows;
     if (numPixels / cols != rows) {
         printf("uint32_t multiplication overflow\n");
         return NULL;
     }
 
-    Image *img = malloc(sizeof(Image) + sizeof(Color) * numPixels);
+    Image *img = malloc(sizeof(Image));
     img->cols = cols;
     img->rows = rows;
 
+    img->image = malloc(sizeof(Color*) * numPixels);
     uint32_t idx = 0;
     uint8_t r, g, b;
-    while (fscanf(fp, "%d %d %d", r, g, b)) {
-        Color *color = malloc(sizeof(Color));
-        color->R = r;
-        color->G = g;
-        color->B = b;
-        (img->image)[idx++] = color;
+    while (idx < numPixels) {
+        fscanf(fp, "%hhu %hhu %hhu", &r, &g, &b);
+        img->image[idx] = malloc(sizeof(Color));
+        img->image[idx]->R = r;
+        img->image[idx]->G = g;
+        img->image[idx]->B = b;
+        idx++;
     }
 
     fclose(fp);
@@ -74,24 +76,30 @@ void writeData(Image *image)
     printf("%d %d\n", image->cols, image->rows);
     printf("255\n");
 
-    uint32_t numPixels = image->cols * image->rows;
-    uint32_t idx = 0;
+    uint64_t numPixels = image->cols * image->rows;
+    uint64_t idx = 0;
     const uint8_t SEPARATOR = 3;
     while (idx < numPixels) {
         Color *color = image->image[idx];
         printf("%*d %*d %*d", SEPARATOR, color->R, SEPARATOR, color->G, SEPARATOR, color->B);
 
+        idx++;
         if (idx % image->cols) {
-            printf("%*c", SEPARATOR, " ");
+            printf("%*s", SEPARATOR, " ");
         } else {
             printf("\n");
         }
-        idx++;
     }
 }
 
 //Frees an image
-void freeImage(Image *image)
+void freeImage(Image *image) 
 {
-	//YOUR CODE HERE
+    uint64_t numPixels = image->cols * image->rows;
+    uint64_t idx = 0;
+    while (idx < numPixels) {
+        free(image->image[idx++]);
+    }
+    free(image->image);
+    free(image);
 }
