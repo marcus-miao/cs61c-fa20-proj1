@@ -14,6 +14,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <inttypes.h>
 #include "imageloader.h"
 
@@ -22,7 +23,47 @@
 //and the left column as adjacent to the right column.
 Color *evaluateOneCell(Image *image, int row, int col, uint32_t rule)
 {
-	//YOUR CODE HERE
+    Color *nextColor = malloc(sizeof(Color));
+    nextColor->R = nextColor->G = nextColor->B = 0;
+
+    const int numSurrounding = 8;
+    const int dx[numSurrounding] = {-1, -1, 0, 1, 1, 1, 0, -1};
+    const int dy[numSurrounding] = {0, 1, 1, 1, 0, -1, -1, -1};
+
+    const int colorSize = 8;
+    int aliveCountR[colorSize] = {0}, aliveCountG[colorSize] = {0}, aliveCountB[colorSize] = {0};
+    for (int i = 0; i < numSurrounding; i++) {
+        // get index of the neighbor in the matrix, with consideration of wrapping
+        int neighborCol = (col + dx[i]) % image->cols;
+        neighborCol = neighborCol < 0 ? neighborCol + image->cols : neighborCol;
+        int neighborRow = (row + dy[i]) % image->rows;
+        neighborRow = neighborRow < 0 ? neighborRow + image->rows : neighborRow;
+
+        Color *neighborColor = image->image[neighborRow * image->cols + neighborCol];
+
+        // bit-wise alive count
+        for (int j = 0; j < colorSize; j++) {
+            int mask = 1 << j;
+            aliveCountR[j] += neighborColor->R & mask > 0; 
+            aliveCountG[j] += neighborColor->G & mask > 0;
+            aliveCountB[j] += neighborColor->B & mask > 0;
+        }
+    }
+
+    Color *currentColor = image->image[row * image->cols + col];
+    const int shift = 9;
+    for (int i = 0; i < colorSize; i++) {
+        int mask = 1 << i;
+        int stateIdxR = (currentColor->R & mask > 0) * shift + aliveCountR[i];
+        int stateIdxG = (currentColor->G & mask > 0) * shift + aliveCountG[i];
+        int stateIdxB = (currentColor->B & mask > 0) * shift + aliveCountB[i];
+
+        nextColor->R += ((rule & 1 << stateIdxR) > 0) << i;
+        nextColor->G += ((rule & 1 << stateIdxG) > 0) << i;
+        nextColor->B += ((rule & 1 << stateIdxB) > 0) << i;
+    }
+
+    return nextColor;
 }
 
 //The main body of Life; given an image and a rule, computes one iteration of the Game of Life.
