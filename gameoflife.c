@@ -27,11 +27,11 @@ Color *evaluateOneCell(Image *image, int row, int col, uint32_t rule)
     nextColor->R = nextColor->G = nextColor->B = 0;
 
     const int numSurrounding = 8;
-    const int dx[numSurrounding] = {-1, -1, 0, 1, 1, 1, 0, -1};
-    const int dy[numSurrounding] = {0, 1, 1, 1, 0, -1, -1, -1};
+    int dx[] = {-1, -1, 0, 1, 1, 1, 0, -1};
+    int dy[] = {0, 1, 1, 1, 0, -1, -1, -1};
 
     const int colorSize = 8;
-    int aliveCountR[colorSize] = {0}, aliveCountG[colorSize] = {0}, aliveCountB[colorSize] = {0};
+    int aliveCountR[8] = {0}, aliveCountG[8] = {0}, aliveCountB[8] = {0};
     for (int i = 0; i < numSurrounding; i++) {
         // get index of the neighbor in the matrix, with consideration of wrapping
         int neighborCol = (col + dx[i]) % image->cols;
@@ -44,9 +44,9 @@ Color *evaluateOneCell(Image *image, int row, int col, uint32_t rule)
         // bit-wise alive count
         for (int j = 0; j < colorSize; j++) {
             int mask = 1 << j;
-            aliveCountR[j] += neighborColor->R & mask > 0; 
-            aliveCountG[j] += neighborColor->G & mask > 0;
-            aliveCountB[j] += neighborColor->B & mask > 0;
+            aliveCountR[j] += (neighborColor->R & mask) > 0; 
+            aliveCountG[j] += (neighborColor->G & mask) > 0;
+            aliveCountB[j] += (neighborColor->B & mask) > 0;
         }
     }
 
@@ -54,9 +54,9 @@ Color *evaluateOneCell(Image *image, int row, int col, uint32_t rule)
     const int shift = 9;
     for (int i = 0; i < colorSize; i++) {
         int mask = 1 << i;
-        int stateIdxR = (currentColor->R & mask > 0) * shift + aliveCountR[i];
-        int stateIdxG = (currentColor->G & mask > 0) * shift + aliveCountG[i];
-        int stateIdxB = (currentColor->B & mask > 0) * shift + aliveCountB[i];
+        int stateIdxR = ((currentColor->R & mask) > 0) * shift + aliveCountR[i];
+        int stateIdxG = ((currentColor->G & mask) > 0) * shift + aliveCountG[i];
+        int stateIdxB = ((currentColor->B & mask) > 0) * shift + aliveCountB[i];
 
         nextColor->R += ((rule & 1 << stateIdxR) > 0) << i;
         nextColor->G += ((rule & 1 << stateIdxG) > 0) << i;
@@ -70,7 +70,32 @@ Color *evaluateOneCell(Image *image, int row, int col, uint32_t rule)
 //You should be able to copy most of this from steganography.c
 Image *life(Image *image, uint32_t rule)
 {
-	//YOUR CODE HERE
+    Image *nextImage = malloc(sizeof(Image));
+    nextImage->rows = image->rows;
+    nextImage->cols = image->cols;
+
+    uint64_t numPixels = image->rows * image->cols;
+    nextImage->image = malloc(sizeof(Color*) * numPixels);
+
+    for (int row = 0; row < image->rows; row++) {
+        for (int col = 0; col < image->cols; col++) {
+            Color *nextColor = evaluateOneCell(image, row, col, rule);            
+            nextImage->image[row * image->cols + col] = nextColor;
+        }
+    }
+
+    return nextImage;
+}
+
+void processCLI(int argc, char **argv, char **filename, uint32_t *rule) 
+{
+	if (argc != 3) {
+		printf("usage: %s filename rule\n",argv[0]);
+		printf("filename is an ASCII PPM file (type P3) with maximum value 255.\n");
+		exit(-1);
+	}
+	*filename = argv[1];
+    *rule = strtoul(argv[2], NULL, 0);
 }
 
 /*
@@ -90,5 +115,14 @@ You may find it useful to copy the code from steganography.c, to start.
 */
 int main(int argc, char **argv)
 {
-	//YOUR CODE HERE
+    char *fileName;
+    uint32_t rule;
+    processCLI(argc, argv, &fileName, &rule);
+    
+    Image *image = readData(fileName);
+    Image *nextImage = life(image, rule);
+    writeData(nextImage);
+
+    freeImage(image);
+    freeImage(nextImage);
 }
